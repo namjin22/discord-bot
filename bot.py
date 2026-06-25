@@ -93,9 +93,9 @@ async def certify_writing(interaction: discord.Interaction):
     stats = await db.get_monthly_stats()
     month_count = next((s["count"] for s in stats if s["user_id"] == user_id), 1)
 
-    year_month = datetime.today().strftime("%Y년 %m월")
+    month = datetime.today().strftime("%m월")
     await interaction.response.send_message(
-        f"**{username}** 오늘도 수고했어요!\n{year_month} 누적 {month_count}회째네요."
+        f"삐요삐요~! 오늘도 수고하셨습니다! (글 인증 완료!)\n{month}에 {month_count}번이나 썼어요?! 헉 (이번 달 누적 {month_count}회)"
     )
 
 
