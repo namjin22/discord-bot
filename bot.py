@@ -99,6 +99,14 @@ async def certify_writing(interaction: discord.Interaction):
     )
 
 
+def _rank_label(i: int) -> str:
+    if i == 1: return "🥇"
+    if i == 2: return "🥈"
+    if i == 3: return "🥉"
+    number_emojis = {4:"4️⃣",5:"5️⃣",6:"6️⃣",7:"7️⃣",8:"8️⃣",9:"9️⃣",10:"🔟"}
+    return number_emojis.get(i, f"`{i}.`")
+
+
 @client.tree.command(name="글작성현황", description="이번 달 전체 멤버의 글 작성 횟수를 표시합니다.")
 async def writing_status(interaction: discord.Interaction):
     stats = await db.get_monthly_stats()
@@ -110,9 +118,13 @@ async def writing_status(interaction: discord.Interaction):
         )
         return
 
-    lines = [f"**{year_month} 글작성현황**\n"]
+    lines = [f"**✦ {year_month} 글작성현황 ✦**\n"]
+
     for i, s in enumerate(stats, 1):
-        lines.append(f"{i}. {s['username']} — {s['count']}회")
+        if i == 4:
+            lines.append("─────────────────")
+        label = _rank_label(i)
+        lines.append(f"{label}  **{s['username']}** · {s['count']}회")
 
     await interaction.response.send_message("\n".join(lines))
 
