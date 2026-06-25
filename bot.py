@@ -119,12 +119,25 @@ async def writing_status(interaction: discord.Interaction):
         return
 
     lines = [f"**✦ {year_month} 글작성현황 ✦**\n"]
+    rank = 1
+    i = 0
+    separator_added = False
 
-    for i, s in enumerate(stats, 1):
-        if i == 4:
+    while i < len(stats):
+        count = stats[i]["count"]
+        group = []
+        while i < len(stats) and stats[i]["count"] == count:
+            group.append(stats[i])
+            i += 1
+
+        if rank > 3 and not separator_added:
             lines.append("─────────────────")
-        label = _rank_label(i)
-        lines.append(f"{label}  **{s['username']}** · {s['count']}회")
+            separator_added = True
+
+        label = _rank_label(rank)
+        names = ", ".join(f"**{m['username']}**" for m in group)
+        lines.append(f"{label}  {names} · {count}회")
+        rank += len(group)
 
     await interaction.response.send_message("\n".join(lines))
 
