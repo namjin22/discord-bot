@@ -133,7 +133,7 @@ async def writing_status(interaction: discord.Interaction):
 @app_commands.describe(member="횟수를 추가할 멤버")
 @is_admin()
 async def add_count(interaction: discord.Interaction, member: discord.Member):
-    await db.add_writing(str(member.id), member.display_name)
+    await db.add_writing(str(member.id), member.display_name, db._admin_date())
     stats = await db.get_monthly_stats()
     month_count = next((s["count"] for s in stats if s["user_id"] == str(member.id)), 1)
 

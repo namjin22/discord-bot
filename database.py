@@ -1,5 +1,5 @@
 import aiosqlite
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 DB_PATH = "writing_bot.db"
 
@@ -26,6 +26,13 @@ def _year_month() -> str:
     return datetime.today().strftime("%Y-%m")
 
 
+def _admin_date() -> str:
+    """관리자가 횟수를 조정할 때 오늘 인증 여부와 충돌하지 않도록 오늘이 아닌 날짜를 반환."""
+    today = date.today()
+    first = today.replace(day=1)
+    return first.isoformat() if first < today else (today - timedelta(days=1)).isoformat()
+
+
 async def has_written_today(user_id: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
@@ -35,11 +42,11 @@ async def has_written_today(user_id: str) -> bool:
             return await cursor.fetchone() is not None
 
 
-async def add_writing(user_id: str, username: str):
+async def add_writing(user_id: str, username: str, write_date: str | None = None):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "INSERT INTO writing_records (user_id, username, write_date, year_month) VALUES (?, ?, ?, ?)",
-            (user_id, username, _today(), _year_month()),
+            (user_id, username, write_date if write_date is not None else _today(), _year_month()),
         )
         await db.commit()
 
@@ -90,15 +97,16 @@ async def get_monthly_stats() -> list[dict]:
 
 async def set_writing_count(user_id: str, username: str, count: int):
     """이번 달 기록을 모두 지우고 count만큼 새로 삽입"""
+    past = _admin_date()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "DELETE FROM writing_records WHERE user_id = ? AND year_month = ?",
             (user_id, _year_month()),
         )
-        for i in range(count):
+        for _ in range(count):
             await db.execute(
                 "INSERT INTO writing_records (user_id, username, write_date, year_month) VALUES (?, ?, ?, ?)",
-                (user_id, username, _today(), _year_month()),
+                (user_id, username, past, _year_month()),
             )
         await db.commit()
 
