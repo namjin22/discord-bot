@@ -88,6 +88,21 @@ async def get_monthly_stats() -> list[dict]:
     return [{"user_id": r[0], "username": r[1], "count": r[2]} for r in rows]
 
 
+async def set_writing_count(user_id: str, username: str, count: int):
+    """이번 달 기록을 모두 지우고 count만큼 새로 삽입"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM writing_records WHERE user_id = ? AND year_month = ?",
+            (user_id, _year_month()),
+        )
+        for i in range(count):
+            await db.execute(
+                "INSERT INTO writing_records (user_id, username, write_date, year_month) VALUES (?, ?, ?, ?)",
+                (user_id, username, _today(), _year_month()),
+            )
+        await db.commit()
+
+
 async def get_today_writers() -> set[str]:
     """오늘 글을 작성한 user_id 집합"""
     async with aiosqlite.connect(DB_PATH) as db:

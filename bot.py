@@ -150,6 +150,19 @@ async def remove_count(interaction: discord.Interaction, member: discord.Member)
     )
 
 
+@client.tree.command(name="글작성횟수설정", description="[관리자] 특정 멤버의 이번 달 글 작성 횟수를 지정한 값으로 설정합니다.")
+@app_commands.describe(member="횟수를 설정할 멤버", count="설정할 횟수")
+@is_admin()
+async def set_count(interaction: discord.Interaction, member: discord.Member, count: int):
+    if count < 0:
+        await interaction.response.send_message("0 이상의 숫자를 입력해주세요.", ephemeral=True)
+        return
+    await db.set_writing_count(str(member.id), member.display_name, count)
+    await interaction.response.send_message(
+        f"{member.display_name} 이번 달 횟수를 {count}회로 설정했어요."
+    )
+
+
 @client.tree.command(name="오늘글작성현황", description="오늘 글을 작성한 멤버 목록을 표시합니다.")
 async def today_status(interaction: discord.Interaction):
     await interaction.response.defer()
