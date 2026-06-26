@@ -1,7 +1,8 @@
 import aiosqlite
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 DB_PATH = "writing_bot.db"
+KST = timezone(timedelta(hours=9))
 
 
 async def init_db():
@@ -19,16 +20,16 @@ async def init_db():
 
 
 def _today() -> str:
-    return date.today().isoformat()
+    return datetime.now(KST).date().isoformat()
 
 
 def _year_month() -> str:
-    return datetime.today().strftime("%Y-%m")
+    return datetime.now(KST).strftime("%Y-%m")
 
 
 def _admin_date() -> str:
     """관리자가 횟수를 조정할 때 오늘 인증 여부와 충돌하지 않도록 오늘이 아닌 날짜를 반환."""
-    today = date.today()
+    today = datetime.now(KST).date()
     first = today.replace(day=1)
     return first.isoformat() if first < today else (today - timedelta(days=1)).isoformat()
 

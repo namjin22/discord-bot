@@ -3,7 +3,9 @@ import discord
 from discord import app_commands
 from discord.ext import tasks
 from dotenv import load_dotenv
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
+
+KST = timezone(timedelta(hours=9))
 import json
 import pathlib
 
@@ -26,7 +28,7 @@ def get_last_reminder() -> date | None:
 
 
 def save_last_reminder():
-    REMINDER_FILE.write_text(json.dumps({"date": date.today().isoformat()}))
+    REMINDER_FILE.write_text(json.dumps({"date": datetime.now(KST).date().isoformat()}))
 
 
 class WritingBot(discord.Client):
@@ -93,9 +95,9 @@ async def certify_writing(interaction: discord.Interaction):
     stats = await db.get_monthly_stats()
     month_count = next((s["count"] for s in stats if s["user_id"] == user_id), 1)
 
-    month = datetime.today().strftime("%m월")
+    month = datetime.now(KST).strftime("%m월")
     await interaction.response.send_message(
-        f"삐요삐요~! 오늘도 수고하셨습니다! (글 인증 완료!)\n{month}에 {month_count}번이나 썼어요?! 헉 (이번 달 누적 {month_count}회)"
+        f"인증 완료! 이번 달 {month_count}회 작성했어요."
     )
 
 
@@ -110,7 +112,7 @@ def _rank_label(i: int) -> str:
 @client.tree.command(name="글작성현황", description="이번 달 전체 멤버의 글 작성 횟수를 표시합니다.")
 async def writing_status(interaction: discord.Interaction):
     stats = await db.get_monthly_stats()
-    year_month = datetime.today().strftime("%Y년 %m월")
+    year_month = datetime.now(KST).strftime("%Y년 %m월")
 
     if not stats:
         await interaction.response.send_message(
@@ -202,7 +204,7 @@ async def today_status(interaction: discord.Interaction):
         if str(member.id) in today_writers:
             written.append(member.display_name)
 
-    today_str = datetime.today().strftime("%Y년 %m월 %d일")
+    today_str = datetime.now(KST).strftime("%Y년 %m월 %d일")
 
     if not written:
         await interaction.followup.send(
