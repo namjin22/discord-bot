@@ -79,8 +79,9 @@ async def remove_writing(user_id: str, username: str):
         return True
 
 
-async def get_monthly_stats() -> list[dict]:
-    """이번 달 전체 멤버 글 작성 횟수"""
+async def get_monthly_stats(year_month: str | None = None) -> list[dict]:
+    """특정 달(또는 이번 달) 전체 멤버 글 작성 횟수"""
+    target = year_month if year_month is not None else _year_month()
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             """
@@ -90,7 +91,22 @@ async def get_monthly_stats() -> list[dict]:
             GROUP BY user_id
             ORDER BY count DESC, username ASC
             """,
-            (_year_month(),),
+            (target,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [{"user_id": r[0], "username": r[1], "count": r[2]} for r in rows]
+
+
+async def get_cumulative_stats() -> list[dict]:
+    """전체 기간 누적 글 작성 횟수"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """
+            SELECT user_id, username, COUNT(*) as count
+            FROM writing_records
+            GROUP BY user_id
+            ORDER BY count DESC, username ASC
+            """
         ) as cursor:
             rows = await cursor.fetchall()
     return [{"user_id": r[0], "username": r[1], "count": r[2]} for r in rows]

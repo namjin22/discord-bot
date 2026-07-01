@@ -109,18 +109,8 @@ def _rank_label(i: int) -> str:
     return number_emojis.get(i, f"`{i}.`")
 
 
-@client.tree.command(name="글작성현황", description="이번 달 전체 멤버의 글 작성 횟수를 표시합니다.")
-async def writing_status(interaction: discord.Interaction):
-    stats = await db.get_monthly_stats()
-    year_month = datetime.now(KST).strftime("%Y년 %m월")
-
-    if not stats:
-        await interaction.response.send_message(
-            f"{year_month} 글작성현황\n아직 이번 달 기록이 없어요."
-        )
-        return
-
-    lines = [f"**✦ {year_month} 글작성현황 ✦**\n"]
+def _build_stats_lines(stats: list[dict], cumulative_map: dict | None = None) -> list[str]:
+    lines = []
     rank = 1
     i = 0
     separator_added = False
@@ -137,10 +127,59 @@ async def writing_status(interaction: discord.Interaction):
             separator_added = True
 
         label = _rank_label(rank)
-        names = ", ".join(f"**{m['username']}**" for m in group)
-        lines.append(f"{label}  {names} · {count}회")
+        if cumulative_map is not None:
+            for m in group:
+                total = cumulative_map.get(m["user_id"], m["count"])
+                lines.append(f"{label}  **{m['username']}** · {count}회 (누적 {total}회)")
+        else:
+            names = ", ".join(f"**{m['username']}**" for m in group)
+            lines.append(f"{label}  {names} · {count}회")
         rank += len(group)
 
+    return lines
+
+
+@client.tree.command(name="글작성현황", description="이번 달 전체 멤버의 글 작성 횟수를 표시합니다.")
+async def writing_status(interaction: discord.Interaction):
+    stats, cumulative = await db.get_monthly_stats(), await db.get_cumulative_stats()
+    cumulative_map = {s["user_id"]: s["count"] for s in cumulative}
+    year_month = datetime.now(KST).strftime("%Y년 %m월")
+
+    if not stats:
+        await interaction.response.send_message(
+            f"{year_month} 글작성현황\n아직 이번 달 기록이 없어요."
+        )
+        return
+
+    lines = [f"**✦ {year_month} 글작성현황 ✦**\n"] + _build_stats_lines(stats, cumulative_map)
+    await interaction.response.send_message("\n".join(lines))
+
+
+@client.tree.command(name="월별글작성현황", description="특정 연월의 글 작성 현황을 표시합니다. (생략 시 이번 달)")
+@app_commands.describe(year="조회할 연도 (예: 2026, 생략 시 올해)", month="조회할 월 (1-12, 생략 시 이번 달)")
+async def monthly_writing_status(interaction: discord.Interaction, year: int | None = None, month: int | None = None):
+    now = datetime.now(KST)
+    year = year if year is not None else now.year
+    month = month if month is not None else now.month
+
+    if month < 1 or month > 12:
+        await interaction.response.send_message("월은 1~12 사이의 숫자를 입력해주세요.", ephemeral=True)
+        return
+    if year < 2000 or year > now.year + 1:
+        await interaction.response.send_message(f"연도는 2000~{now.year} 사이의 숫자를 입력해주세요.", ephemeral=True)
+        return
+
+    year_month_key = f"{year:04d}-{month:02d}"
+    stats = await db.get_monthly_stats(year_month_key)
+    year_month_str = f"{year}년 {month:02d}월"
+
+    if not stats:
+        await interaction.response.send_message(
+            f"**{year_month_str} 글작성현황**\n해당 기간 기록이 없어요."
+        )
+        return
+
+    lines = [f"**✦ {year_month_str} 글작성현황 ✦**\n"] + _build_stats_lines(stats)
     await interaction.response.send_message("\n".join(lines))
 
 
