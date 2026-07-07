@@ -101,6 +101,26 @@ async def certify_writing(interaction: discord.Interaction):
     )
 
 
+RULES_MESSAGE = """## 규칙
+
+- 은주T께서 주제방에 올려주시는 키워드를 주제로 글을 작성합니다.
+- 작성한 글은 **글-올리기-방** 채널에 올립니다.
+- 글 작성 후 **명령어** 채널에서 인증 명령어를 입력합니다. (인증 안할 시 본인 책임)
+- 주제 추천은 **주제 추천** 채널에 올려주시면 됩니다.
+- 본인이 개인적으로 작성하고 싶은 글은 **아무글이나** 포럼에 올려주시면 됩니다.
+
+최소 3일에 한 번씩은 글을 올려주셔야 합니다.
+**매달 한 번씩 확인을 하여 활동이 적은
+인원(최소 10개)은 글쓰기 방에서 제외될 수 있습니다.**
+
+확인 후 이모지 남겨주세요."""
+
+
+@client.tree.command(name="규칙", description="글쓰기 활동 규칙을 안내합니다.")
+async def rules(interaction: discord.Interaction):
+    await interaction.response.send_message(RULES_MESSAGE)
+
+
 def _rank_label(i: int) -> str:
     if i == 1: return "🥇"
     if i == 2: return "🥈"
