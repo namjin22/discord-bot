@@ -1,7 +1,18 @@
+글
 .env
+.dev.vars
 *.db
+*.b64
+data/
+
+# Python (legacy/)
 __pycache__/
 *.pyc
 *.pyo
 .venv/
 venv/
+
+# Cloudflare Workers
+node_modules/
+.wrangler/
+dist/

@@ -1,0 +1,21 @@
+{
+  "name": "discord-writing-bot",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "교내 글쓰기 방 디스코드 봇 (Cloudflare Workers + D1)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "register": "node --env-file-if-exists=.dev.vars scripts/register-commands.ts",
+    "unregister": "node --env-file-if-exists=.dev.vars scripts/clear-commands.ts",
+    "db:init": "wrangler d1 execute writing-bot --remote --file=schema.sql",
+    "db:init:local": "wrangler d1 execute writing-bot --local --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260920.1",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.135.0"
+  }
+}

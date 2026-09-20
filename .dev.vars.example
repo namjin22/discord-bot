@@ -1,0 +1,4 @@
+DISCORD_TOKEN=여기에_봇_토큰_입력
+DISCORD_APPLICATION_ID=여기에_애플리케이션_ID_입력
+DISCORD_PUBLIC_KEY=여기에_퍼블릭_키_입력
+GUILD_ID=여기에_서버_ID_입력

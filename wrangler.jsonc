@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "discord-writing-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": {
+    "enabled": true
+  },
+
+  // 비밀값이 아닌 설정값. 배포 전에 실제 값으로 채워주세요.
+  // (DISCORD_TOKEN만 비밀값이라 여기 두지 않고 `wrangler secret put DISCORD_TOKEN`으로 넣습니다.)
+  "vars": {
+    "DISCORD_APPLICATION_ID": "1511192191639486605",
+    "DISCORD_PUBLIC_KEY": "9444e2f8dd6aadba9c79a7dbdb7957946ff955bd4b6d38463b1f60a442566d59",
+    "GUILD_ID": "1458585211964100733"
+  },
+
+  // `wrangler d1 create writing-bot` 실행 후 출력된 database_id를 채워주세요.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "writing-bot",
+      "database_id": "8e16a27f-f0a9-4e8c-a57e-aea5942eda39"
+    }
+  ]
+}
