@@ -20,6 +20,7 @@ import {
 import {
   MAX_SET_COUNT,
   addWriting,
+  addWritingBulk,
   getCumulativeStats,
   getMonthlyStats,
   getTodayWriters,
@@ -27,7 +28,7 @@ import {
   removeWriting,
   setWritingCount,
 } from "./db.ts";
-import { adminDate, kstDateLabel, kstMonth, kstYear, kstYearMonthLabel } from "./kst.ts";
+import { kstDateLabel, kstMonth, kstYear, kstYearMonthLabel } from "./kst.ts";
 
 /** Discord 메시지 본문 최대 길이 */
 const MAX_MESSAGE_LENGTH = 2000;
@@ -174,18 +175,29 @@ async function monthlyWritingStatus(interaction: Interaction, env: Env): Promise
   );
 }
 
+/** count 옵션이 생략되면 기존과 동일하게 1로 취급한다. */
+function getCountOption(interaction: Interaction): number {
+  return getIntegerOption(interaction, "count") ?? 1;
+}
+
 async function addCount(interaction: Interaction, env: Env): Promise<Response> {
   if (!isAdministrator(interaction.member)) return messageResponse(ADMIN_ONLY, true);
 
   const member = resolveMemberOption(interaction, "member");
   if (!member) return messageResponse("멤버 정보를 읽지 못했어요.", true);
 
-  await addWriting(env.DB, member.id, member.displayName, adminDate());
+  const count = getCountOption(interaction);
+  if (count < 1) return messageResponse("1 이상의 숫자를 입력해주세요.", true);
+  if (count > MAX_SET_COUNT) {
+    return messageResponse(`${MAX_SET_COUNT} 이하의 숫자를 입력해주세요.`, true);
+  }
+
+  await addWritingBulk(env.DB, member.id, member.displayName, count);
   const stats = await getMonthlyStats(env.DB);
-  const monthCount = stats.find((s) => s.user_id === member.id)?.count ?? 1;
+  const monthCount = stats.find((s) => s.user_id === member.id)?.count ?? count;
 
   return messageResponse(
-    `${member.displayName} 이번 달 횟수 1 추가했어요. 현재 ${monthCount}회예요.`,
+    `${member.displayName} 이번 달 횟수 ${count} 추가했어요. 현재 ${monthCount}회예요.`,
   );
 }
 
@@ -195,16 +207,23 @@ async function removeCount(interaction: Interaction, env: Env): Promise<Response
   const member = resolveMemberOption(interaction, "member");
   if (!member) return messageResponse("멤버 정보를 읽지 못했어요.", true);
 
-  const removed = await removeWriting(env.DB, member.id);
-  if (!removed) {
+  const count = getCountOption(interaction);
+  if (count < 1) return messageResponse("1 이상의 숫자를 입력해주세요.", true);
+  if (count > MAX_SET_COUNT) {
+    return messageResponse(`${MAX_SET_COUNT} 이하의 숫자를 입력해주세요.`, true);
+  }
+
+  const removed = await removeWriting(env.DB, member.id, count);
+  if (removed === 0) {
     return messageResponse(`${member.displayName} 이번 달 기록이 없어요.`, true);
   }
 
   const stats = await getMonthlyStats(env.DB);
   const monthCount = stats.find((s) => s.user_id === member.id)?.count ?? 0;
 
+  const shortfallNote = removed < count ? ` (기록이 모자라 ${removed}회만 차감됐어요)` : "";
   return messageResponse(
-    `${member.displayName} 이번 달 횟수 1 차감했어요. 현재 ${monthCount}회예요.`,
+    `${member.displayName} 이번 달 횟수 ${removed} 차감했어요.${shortfallNote} 현재 ${monthCount}회예요.`,
   );
 }
 

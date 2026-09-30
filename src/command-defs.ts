@@ -12,11 +12,16 @@ const CHAT_INPUT = 1;
 const INTEGER = 4;
 const USER = 6;
 
+/** src/db.ts의 MAX_SET_COUNT와 값을 맞춰둔다. */
+const MAX_SET_COUNT = 500;
+
 export interface CommandOption {
   name: string;
   description: string;
   type: number;
   required: boolean;
+  min_value?: number;
+  max_value?: number;
 }
 
 export interface CommandDefinition {
@@ -68,18 +73,34 @@ export const COMMANDS: CommandDefinition[] = [
   },
   {
     name: "글작성횟수추가",
-    description: "[관리자] 특정 멤버의 글 작성 횟수를 1 추가합니다.",
+    description: "[관리자] 특정 멤버의 글 작성 횟수를 추가합니다. (생략 시 1)",
     type: CHAT_INPUT,
     options: [
       { name: "member", description: "횟수를 추가할 멤버", type: USER, required: true },
+      {
+        name: "count",
+        description: "추가할 횟수 (생략 시 1)",
+        type: INTEGER,
+        required: false,
+        min_value: 1,
+        max_value: MAX_SET_COUNT,
+      },
     ],
   },
   {
     name: "글작성횟수차감",
-    description: "[관리자] 특정 멤버의 글 작성 횟수를 1 차감합니다.",
+    description: "[관리자] 특정 멤버의 글 작성 횟수를 차감합니다. (생략 시 1)",
     type: CHAT_INPUT,
     options: [
       { name: "member", description: "횟수를 차감할 멤버", type: USER, required: true },
+      {
+        name: "count",
+        description: "차감할 횟수 (생략 시 1)",
+        type: INTEGER,
+        required: false,
+        min_value: 1,
+        max_value: MAX_SET_COUNT,
+      },
     ],
   },
   {

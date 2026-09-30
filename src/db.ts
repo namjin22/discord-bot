@@ -36,30 +36,51 @@ export async function addWriting(
     .run();
 }
 
-/**
- * 관리자용: 오늘 날짜 기록 1건 제거 (없으면 이번 달 최신 기록 제거).
- * 제거할 기록이 전혀 없으면 false.
- */
-export async function removeWriting(db: D1Database, userId: string): Promise<boolean> {
-  let row = await db
-    .prepare("SELECT id FROM writing_records WHERE user_id = ? AND write_date = ? LIMIT 1")
-    .bind(userId, kstToday())
-    .first<{ id: number }>();
+/** 관리자용: 이번 달 기록을 count건 한 번에 추가 (write_date는 addCount와 동일하게 adminDate() 사용) */
+export async function addWritingBulk(
+  db: D1Database,
+  userId: string,
+  username: string,
+  count: number,
+): Promise<void> {
+  const writeDate = adminDate();
+  const yearMonth = kstYearMonth();
+  const insert = db.prepare(
+    "INSERT INTO writing_records (user_id, username, write_date, year_month) VALUES (?, ?, ?, ?)",
+  );
 
-  if (row === null) {
-    // 이번 달 기록 중 가장 최근 것 제거
-    row = await db
-      .prepare(
-        "SELECT id FROM writing_records WHERE user_id = ? AND year_month = ? ORDER BY write_date DESC LIMIT 1",
-      )
-      .bind(userId, kstYearMonth())
-      .first<{ id: number }>();
+  const statements: D1PreparedStatement[] = [];
+  for (let i = 0; i < count; i++) {
+    statements.push(insert.bind(userId, username, writeDate, yearMonth));
   }
 
-  if (row === null) return false;
+  await db.batch(statements);
+}
 
-  await db.prepare("DELETE FROM writing_records WHERE id = ?").bind(row.id).run();
-  return true;
+/**
+ * 관리자용: 최대 count건 제거. 오늘 날짜 기록을 우선 지우고, 모자라면 이번 달 기록 중
+ * 최근 것부터 채운다. 실제로 지워진 건수를 반환한다(기록이 부족하면 count보다 작을 수 있음).
+ */
+export async function removeWriting(
+  db: D1Database,
+  userId: string,
+  count: number,
+): Promise<number> {
+  const { results } = await db
+    .prepare(
+      `SELECT id FROM writing_records
+       WHERE user_id = ? AND year_month = ?
+       ORDER BY (write_date = ?) DESC, write_date DESC, id DESC
+       LIMIT ?`,
+    )
+    .bind(userId, kstYearMonth(), kstToday(), count)
+    .all<{ id: number }>();
+
+  if (results.length === 0) return 0;
+
+  const del = db.prepare("DELETE FROM writing_records WHERE id = ?");
+  await db.batch(results.map((row) => del.bind(row.id)));
+  return results.length;
 }
 
 /** 특정 달(또는 이번 달) 전체 멤버 글 작성 횟수 */
