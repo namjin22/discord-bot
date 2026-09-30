@@ -28,7 +28,7 @@ import {
   removeWriting,
   setWritingCount,
 } from "./db.ts";
-import { kstDateLabel, kstMonth, kstYear, kstYearMonthLabel } from "./kst.ts";
+import { kstDateLabel, kstMonth, kstYear, kstYearMonth, kstYearMonthLabel } from "./kst.ts";
 
 /** Discord 메시지 본문 최대 길이 */
 const MAX_MESSAGE_LENGTH = 2000;
@@ -150,7 +150,17 @@ async function writingStatus(_interaction: Interaction, env: Env): Promise<Respo
   );
 }
 
-async function monthlyWritingStatus(interaction: Interaction, env: Env): Promise<Response> {
+interface ParsedYearMonth {
+  year: number;
+  month: number;
+  yearMonth: string;
+}
+
+/**
+ * year/month 옵션을 검증해 "YYYY-MM" 키로 정리한다. 둘 다 생략하면 이번 달.
+ * /월별글작성현황, /글작성횟수추가, /글작성횟수차감이 공유한다.
+ */
+function parseYearMonthOption(interaction: Interaction): ParsedYearMonth | Response {
   const year = getIntegerOption(interaction, "year") ?? kstYear();
   const month = getIntegerOption(interaction, "month") ?? kstMonth();
 
@@ -162,9 +172,21 @@ async function monthlyWritingStatus(interaction: Interaction, env: Env): Promise
     return messageResponse(`연도는 2000~${maxYear} 사이의 숫자를 입력해주세요.`, true);
   }
 
-  const yearMonthKey = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
-  const stats = await getMonthlyStats(env.DB, yearMonthKey);
-  const label = `${year}년 ${String(month).padStart(2, "0")}월`;
+  const yearMonth = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+  return { year, month, yearMonth };
+}
+
+/** "이번 달" 또는 "2026년 08월" 형태의 라벨. 관리자 명령의 확인 메시지에 쓴다. */
+function monthLabel({ year, month, yearMonth }: ParsedYearMonth): string {
+  return yearMonth === kstYearMonth() ? "이번 달" : `${year}년 ${String(month).padStart(2, "0")}월`;
+}
+
+async function monthlyWritingStatus(interaction: Interaction, env: Env): Promise<Response> {
+  const parsed = parseYearMonthOption(interaction);
+  if (parsed instanceof Response) return parsed;
+
+  const stats = await getMonthlyStats(env.DB, parsed.yearMonth);
+  const label = `${parsed.year}년 ${String(parsed.month).padStart(2, "0")}월`;
 
   if (stats.length === 0) {
     return messageResponse(`**${label} 글작성현황**\n해당 기간 기록이 없어요.`);
@@ -186,18 +208,21 @@ async function addCount(interaction: Interaction, env: Env): Promise<Response> {
   const member = resolveMemberOption(interaction, "member");
   if (!member) return messageResponse("멤버 정보를 읽지 못했어요.", true);
 
+  const parsed = parseYearMonthOption(interaction);
+  if (parsed instanceof Response) return parsed;
+
   const count = getCountOption(interaction);
   if (count < 1) return messageResponse("1 이상의 숫자를 입력해주세요.", true);
   if (count > MAX_SET_COUNT) {
     return messageResponse(`${MAX_SET_COUNT} 이하의 숫자를 입력해주세요.`, true);
   }
 
-  await addWritingBulk(env.DB, member.id, member.displayName, count);
-  const stats = await getMonthlyStats(env.DB);
+  await addWritingBulk(env.DB, member.id, member.displayName, count, parsed.yearMonth);
+  const stats = await getMonthlyStats(env.DB, parsed.yearMonth);
   const monthCount = stats.find((s) => s.user_id === member.id)?.count ?? count;
 
   return messageResponse(
-    `${member.displayName} 이번 달 횟수 ${count} 추가했어요. 현재 ${monthCount}회예요.`,
+    `${member.displayName} ${monthLabel(parsed)} 횟수 ${count} 추가했어요. 현재 ${monthCount}회예요.`,
   );
 }
 
@@ -207,23 +232,26 @@ async function removeCount(interaction: Interaction, env: Env): Promise<Response
   const member = resolveMemberOption(interaction, "member");
   if (!member) return messageResponse("멤버 정보를 읽지 못했어요.", true);
 
+  const parsed = parseYearMonthOption(interaction);
+  if (parsed instanceof Response) return parsed;
+
   const count = getCountOption(interaction);
   if (count < 1) return messageResponse("1 이상의 숫자를 입력해주세요.", true);
   if (count > MAX_SET_COUNT) {
     return messageResponse(`${MAX_SET_COUNT} 이하의 숫자를 입력해주세요.`, true);
   }
 
-  const removed = await removeWriting(env.DB, member.id, count);
+  const removed = await removeWriting(env.DB, member.id, count, parsed.yearMonth);
   if (removed === 0) {
-    return messageResponse(`${member.displayName} 이번 달 기록이 없어요.`, true);
+    return messageResponse(`${member.displayName} ${monthLabel(parsed)} 기록이 없어요.`, true);
   }
 
-  const stats = await getMonthlyStats(env.DB);
+  const stats = await getMonthlyStats(env.DB, parsed.yearMonth);
   const monthCount = stats.find((s) => s.user_id === member.id)?.count ?? 0;
 
   const shortfallNote = removed < count ? ` (기록이 모자라 ${removed}회만 차감됐어요)` : "";
   return messageResponse(
-    `${member.displayName} 이번 달 횟수 ${removed} 차감했어요.${shortfallNote} 현재 ${monthCount}회예요.`,
+    `${member.displayName} ${monthLabel(parsed)} 횟수 ${removed} 차감했어요.${shortfallNote} 현재 ${monthCount}회예요.`,
   );
 }
 

@@ -73,7 +73,7 @@ export const COMMANDS: CommandDefinition[] = [
   },
   {
     name: "글작성횟수추가",
-    description: "[관리자] 특정 멤버의 글 작성 횟수를 추가합니다. (생략 시 1)",
+    description: "[관리자] 특정 멤버의 글 작성 횟수를 추가합니다. (생략 시 이번 달 1회)",
     type: CHAT_INPUT,
     options: [
       { name: "member", description: "횟수를 추가할 멤버", type: USER, required: true },
@@ -85,11 +85,23 @@ export const COMMANDS: CommandDefinition[] = [
         min_value: 1,
         max_value: MAX_SET_COUNT,
       },
+      {
+        name: "year",
+        description: "적용할 연도 (예: 2026, 생략 시 올해)",
+        type: INTEGER,
+        required: false,
+      },
+      {
+        name: "month",
+        description: "적용할 월 (1-12, 생략 시 이번 달)",
+        type: INTEGER,
+        required: false,
+      },
     ],
   },
   {
     name: "글작성횟수차감",
-    description: "[관리자] 특정 멤버의 글 작성 횟수를 차감합니다. (생략 시 1)",
+    description: "[관리자] 특정 멤버의 글 작성 횟수를 차감합니다. (생략 시 이번 달 1회)",
     type: CHAT_INPUT,
     options: [
       { name: "member", description: "횟수를 차감할 멤버", type: USER, required: true },
@@ -100,6 +112,18 @@ export const COMMANDS: CommandDefinition[] = [
         required: false,
         min_value: 1,
         max_value: MAX_SET_COUNT,
+      },
+      {
+        name: "year",
+        description: "적용할 연도 (예: 2026, 생략 시 올해)",
+        type: INTEGER,
+        required: false,
+      },
+      {
+        name: "month",
+        description: "적용할 월 (1-12, 생략 시 이번 달)",
+        type: INTEGER,
+        required: false,
       },
     ],
   },

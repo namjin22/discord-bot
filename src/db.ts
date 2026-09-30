@@ -36,35 +36,43 @@ export async function addWriting(
     .run();
 }
 
-/** 관리자용: 이번 달 기록을 count건 한 번에 추가 (write_date는 addCount와 동일하게 adminDate() 사용) */
+/**
+ * 관리자용: 지정한 달(생략 시 이번 달) 기록을 count건 한 번에 추가.
+ * 대상이 이번 달이면 기존과 동일하게 adminDate()로 오늘 인증과의 충돌을 피하고,
+ * 다른 달을 지정하면 그 달 1일로 기록한다(오늘 인증 여부와 무관한 달이라 충돌 걱정이 없다).
+ */
 export async function addWritingBulk(
   db: D1Database,
   userId: string,
   username: string,
   count: number,
+  yearMonth?: string,
 ): Promise<void> {
-  const writeDate = adminDate();
-  const yearMonth = kstYearMonth();
+  const targetYearMonth = yearMonth ?? kstYearMonth();
+  const writeDate = targetYearMonth === kstYearMonth() ? adminDate() : `${targetYearMonth}-01`;
+
   const insert = db.prepare(
     "INSERT INTO writing_records (user_id, username, write_date, year_month) VALUES (?, ?, ?, ?)",
   );
 
   const statements: D1PreparedStatement[] = [];
   for (let i = 0; i < count; i++) {
-    statements.push(insert.bind(userId, username, writeDate, yearMonth));
+    statements.push(insert.bind(userId, username, writeDate, targetYearMonth));
   }
 
   await db.batch(statements);
 }
 
 /**
- * 관리자용: 최대 count건 제거. 오늘 날짜 기록을 우선 지우고, 모자라면 이번 달 기록 중
- * 최근 것부터 채운다. 실제로 지워진 건수를 반환한다(기록이 부족하면 count보다 작을 수 있음).
+ * 관리자용: 지정한 달(생략 시 이번 달)에서 최대 count건 제거. 오늘 날짜 기록을 우선 지우고,
+ * 모자라면 그 달 기록 중 최근 것부터 채운다(다른 달을 지정하면 "오늘"과 겹칠 일이 없으니
+ * 자연히 최근 순으로만 지워진다). 실제로 지워진 건수를 반환한다(기록이 부족하면 count보다 작을 수 있음).
  */
 export async function removeWriting(
   db: D1Database,
   userId: string,
   count: number,
+  yearMonth?: string,
 ): Promise<number> {
   const { results } = await db
     .prepare(
@@ -73,7 +81,7 @@ export async function removeWriting(
        ORDER BY (write_date = ?) DESC, write_date DESC, id DESC
        LIMIT ?`,
     )
-    .bind(userId, kstYearMonth(), kstToday(), count)
+    .bind(userId, yearMonth ?? kstYearMonth(), kstToday(), count)
     .all<{ id: number }>();
 
   if (results.length === 0) return 0;
